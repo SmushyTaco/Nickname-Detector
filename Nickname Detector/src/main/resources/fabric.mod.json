@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "nickname_detector",
+  "version": "${version}",
+  "name": "Nickname Detector",
+  "description": "This mod checks if a username is a real username or not, it won't detect all nicknames but it'll detect most.",
+  "authors": [
+    "SmushyTaco"
+  ],
+  "contact": {
+    "homepage": "https://www.smushytaco.com/",
+    "issues": "https://www.curseforge.com/minecraft/mc-mods/nickname-detector/issues/",
+    "sources": "https://github.com/SmushyTaco/Nickname-Detector/"
+  },
+  "license": "GNU Lesser General Public License version 3 (LGPLv3)",
+  "icon": "assets/nickname_detector/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      {
+        "adapter": "kotlin",
+        "value": "com.smushytaco.nickname_detector.NicknameDetectorClient"
+      }
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=${fabricloader}",
+    "fabric-api": ">=${fabric_api}",
+    "fabric-language-kotlin": ">=${fabric_language_kotlin}",
+    "minecraft": ">=${minecraft}",
+    "java": ">=${java}"
+  }
+}
