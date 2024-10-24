@@ -38,10 +38,10 @@ object NicknameDetectorClient : ClientModInitializer {
             } catch (_: Exception) {}
             val accountInformation = uuid?.let { id -> MojangApiParser.getUsername(id) } ?: MojangApiParser.getUuid(username)
             if (accountInformation == null) {
-                clientPlayerEntity.sendMessage(Text.literal("§c${uuid ?: username} §4does not exist!"))
+                clientPlayerEntity.sendMessage(Text.literal("§c${uuid ?: username} §4does not exist!"), false)
                 return@thread
             }
-            clientPlayerEntity.sendMessage(Text.literal("§b${if (uuid != null) accountInformation.id.toString() else accountInformation.name} §3does exist!"))
+            clientPlayerEntity.sendMessage(Text.literal("§b${if (uuid != null) accountInformation.id.toString() else accountInformation.name} §3does exist!"), false)
         }
     }
     override fun onInitializeClient() {
@@ -60,25 +60,25 @@ object NicknameDetectorClient : ClientModInitializer {
                         }
                     }
                     when (normalPlayers.size) {
-                        0 -> it.source.player.sendMessage(Text.literal("§4No normal players were detected!"))
-                        1 -> it.source.player.sendMessage(Text.literal("§b${normalPlayers[0]} §3does exist!"))
-                        2 -> it.source.player.sendMessage(Text.literal("§b${normalPlayers[0]} §3and §b${normalPlayers[1]} §3do exist!"))
+                        0 -> it.source.player.sendMessage(Text.literal("§4No normal players were detected!"), false)
+                        1 -> it.source.player.sendMessage(Text.literal("§b${normalPlayers[0]} §3does exist!"), false)
+                        2 -> it.source.player.sendMessage(Text.literal("§b${normalPlayers[0]} §3and §b${normalPlayers[1]} §3do exist!"), false)
                         else -> {
                             val lastElement = normalPlayers.removeLast()
                             val stringBuilder = StringBuilder()
                             for (normalPlayer in normalPlayers) stringBuilder.append("§b$normalPlayer§3, ")
-                            it.source.player.sendMessage(Text.literal("${stringBuilder}and §b$lastElement §3do exist!"))
+                            it.source.player.sendMessage(Text.literal("${stringBuilder}and §b$lastElement §3do exist!"), false)
                         }
                     }
                     when (nicknamedPlayers.size) {
-                        0 -> it.source.player.sendMessage(Text.literal("§3No nicknamed players were detected!"))
-                        1 -> it.source.player.sendMessage(Text.literal("§c${nicknamedPlayers[0]} §4does not exist!"))
-                        2 -> it.source.player.sendMessage(Text.literal("§c${nicknamedPlayers[0]} §4and §c${nicknamedPlayers[1]} §4do not exist!"))
+                        0 -> it.source.player.sendMessage(Text.literal("§3No nicknamed players were detected!"), false)
+                        1 -> it.source.player.sendMessage(Text.literal("§c${nicknamedPlayers[0]} §4does not exist!"), false)
+                        2 -> it.source.player.sendMessage(Text.literal("§c${nicknamedPlayers[0]} §4and §c${nicknamedPlayers[1]} §4do not exist!"), false)
                         else -> {
                             val lastElement = nicknamedPlayers.removeLast()
                             val stringBuilder = StringBuilder()
                             for (nicknamedPlayer in nicknamedPlayers) stringBuilder.append("§c$nicknamedPlayer§4, ")
-                            it.source.player.sendMessage(Text.literal("${stringBuilder}and §c$lastElement §4do not exist!"))
+                            it.source.player.sendMessage(Text.literal("${stringBuilder}and §c$lastElement §4do not exist!"), false)
                         }
                     }
                 }
