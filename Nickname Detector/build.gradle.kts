@@ -79,7 +79,5 @@ modrinth {
     uploadFile.set(tasks.remapJar)
     gameVersions.addAll(project.extra["minecraft_version"] as String)
     versionName.set("[${project.extra["minecraft_version"] as String}] Nickname Detector")
-    dependencies {
-        required.project("fabric-api", "fabric-language-kotlin")
-    }
+    dependencies { required.project("fabric-api", "fabric-language-kotlin") }
 }
