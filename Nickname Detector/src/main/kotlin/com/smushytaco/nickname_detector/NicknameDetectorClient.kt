@@ -20,16 +20,16 @@ import net.minecraft.command.CommandSource
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.projectile.ProjectileUtil
 import net.minecraft.text.Text
+import net.minecraft.util.Identifier
 import net.minecraft.util.hit.EntityHitResult
 import net.minecraft.util.hit.HitResult
 import org.lwjgl.glfw.GLFW
 import java.util.UUID
 import kotlin.concurrent.thread
 @Environment(EnvType.CLIENT)
-@Suppress("UNUSED")
 object NicknameDetectorClient : ClientModInitializer {
     private const val MOD_ID = "nickname_detector"
-    private val KEYBINDING = KeyBinding("key.$MOD_ID.$MOD_ID", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, "category.$MOD_ID.$MOD_ID")
+    private val KEYBINDING = KeyBinding("key.$MOD_ID.$MOD_ID", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, KeyBinding.Category.create(Identifier.of(MOD_ID, "category")))
     private fun nicknameDetector(username: String, clientPlayerEntity: ClientPlayerEntity) {
         thread {
             var uuid: UUID? = null
@@ -104,7 +104,7 @@ object NicknameDetectorClient : ClientModInitializer {
         })
     }
     private fun target(client: MinecraftClient, range: Double = 250.0, tickDelta: Float = 1.0F): HitResult? {
-        val clientCameraEntity = client.getCameraEntity() ?: return null
+        val clientCameraEntity = client.cameraEntity ?: return null
         var hitResult = clientCameraEntity.raycast(range, tickDelta, false)
         val rotationVector = clientCameraEntity.getRotationVec(1.0F)
         val positionVector = clientCameraEntity.getCameraPosVec(tickDelta)
