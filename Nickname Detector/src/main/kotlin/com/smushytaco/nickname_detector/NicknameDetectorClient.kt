@@ -31,6 +31,7 @@ object NicknameDetectorClient : ClientModInitializer {
     private const val MOD_ID = "nickname_detector"
     private val KEYBINDING = KeyBinding("key.$MOD_ID.$MOD_ID", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, KeyBinding.Category.create(Identifier.of(MOD_ID, "category")))
     private fun nicknameDetector(username: String, clientPlayerEntity: ClientPlayerEntity) {
+        val minecraftClient = MinecraftClient.getInstance()
         thread {
             var uuid: UUID? = null
             try {
@@ -38,20 +39,26 @@ object NicknameDetectorClient : ClientModInitializer {
             } catch (_: Exception) {}
             val accountInformation = uuid?.let { id -> MojangApiParser.getUsername(id) } ?: MojangApiParser.getUuid(username)
             if (accountInformation == null) {
-                clientPlayerEntity.sendMessage(Text.literal("§c${uuid ?: username} §4does not exist!"), false)
+                minecraftClient.execute {
+                    clientPlayerEntity.sendMessage(Text.literal("§c${uuid ?: username} §4does not exist!"), false)
+                }
                 return@thread
             }
-            clientPlayerEntity.sendMessage(Text.literal("§b${if (uuid != null) accountInformation.id.toString() else accountInformation.name} §3does exist!"), false)
+            minecraftClient.execute {
+                clientPlayerEntity.sendMessage(Text.literal("§b${if (uuid != null) accountInformation.id.toString() else accountInformation.name} §3does exist!"), false)
+            }
         }
     }
     override fun onInitializeClient() {
         KeyBindingHelper.registerKeyBinding(KEYBINDING)
         ClientCommandRegistrationCallback.EVENT.register(ClientCommandRegistrationCallback { dispatcher, _ ->
             dispatcher.register(literal("nicknamedetector").executes {
+                val minecraftClient = MinecraftClient.getInstance()
+                val playerNames = it.source.playerNames
                 thread {
                     val nicknamedPlayers = arrayListOf<String>()
                     val normalPlayers = arrayListOf<String>()
-                    for (playerName in it.source.playerNames) {
+                    for (playerName in playerNames) {
                         val accountInformation = MojangApiParser.getUuid(playerName)
                         if (accountInformation == null) {
                             nicknamedPlayers.add(playerName)
@@ -59,26 +66,28 @@ object NicknameDetectorClient : ClientModInitializer {
                             normalPlayers.add(accountInformation.name)
                         }
                     }
-                    when (normalPlayers.size) {
-                        0 -> it.source.player.sendMessage(Text.literal("§4No normal players were detected!"), false)
-                        1 -> it.source.player.sendMessage(Text.literal("§b${normalPlayers[0]} §3does exist!"), false)
-                        2 -> it.source.player.sendMessage(Text.literal("§b${normalPlayers[0]} §3and §b${normalPlayers[1]} §3do exist!"), false)
-                        else -> {
-                            val lastElement = normalPlayers.removeLast()
-                            val stringBuilder = StringBuilder()
-                            for (normalPlayer in normalPlayers) stringBuilder.append("§b$normalPlayer§3, ")
-                            it.source.player.sendMessage(Text.literal("${stringBuilder}and §b$lastElement §3do exist!"), false)
+                    minecraftClient.execute {
+                        when (normalPlayers.size) {
+                            0 -> it.source.player.sendMessage(Text.literal("§4No normal players were detected!"), false)
+                            1 -> it.source.player.sendMessage(Text.literal("§b${normalPlayers[0]} §3does exist!"), false)
+                            2 -> it.source.player.sendMessage(Text.literal("§b${normalPlayers[0]} §3and §b${normalPlayers[1]} §3do exist!"), false)
+                            else -> {
+                                val lastElement = normalPlayers.removeLast()
+                                val stringBuilder = StringBuilder()
+                                for (normalPlayer in normalPlayers) stringBuilder.append("§b$normalPlayer§3, ")
+                                it.source.player.sendMessage(Text.literal("${stringBuilder}and §b$lastElement §3do exist!"), false)
+                            }
                         }
-                    }
-                    when (nicknamedPlayers.size) {
-                        0 -> it.source.player.sendMessage(Text.literal("§3No nicknamed players were detected!"), false)
-                        1 -> it.source.player.sendMessage(Text.literal("§c${nicknamedPlayers[0]} §4does not exist!"), false)
-                        2 -> it.source.player.sendMessage(Text.literal("§c${nicknamedPlayers[0]} §4and §c${nicknamedPlayers[1]} §4do not exist!"), false)
-                        else -> {
-                            val lastElement = nicknamedPlayers.removeLast()
-                            val stringBuilder = StringBuilder()
-                            for (nicknamedPlayer in nicknamedPlayers) stringBuilder.append("§c$nicknamedPlayer§4, ")
-                            it.source.player.sendMessage(Text.literal("${stringBuilder}and §c$lastElement §4do not exist!"), false)
+                        when (nicknamedPlayers.size) {
+                            0 -> it.source.player.sendMessage(Text.literal("§3No nicknamed players were detected!"), false)
+                            1 -> it.source.player.sendMessage(Text.literal("§c${nicknamedPlayers[0]} §4does not exist!"), false)
+                            2 -> it.source.player.sendMessage(Text.literal("§c${nicknamedPlayers[0]} §4and §c${nicknamedPlayers[1]} §4do not exist!"), false)
+                            else -> {
+                                val lastElement = nicknamedPlayers.removeLast()
+                                val stringBuilder = StringBuilder()
+                                for (nicknamedPlayer in nicknamedPlayers) stringBuilder.append("§c$nicknamedPlayer§4, ")
+                                it.source.player.sendMessage(Text.literal("${stringBuilder}and §c$lastElement §4do not exist!"), false)
+                            }
                         }
                     }
                 }

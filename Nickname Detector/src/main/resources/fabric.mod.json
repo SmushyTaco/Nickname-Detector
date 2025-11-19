@@ -12,7 +12,7 @@
     "issues": "https://www.curseforge.com/minecraft/mc-mods/nickname-detector/issues/",
     "sources": "https://github.com/SmushyTaco/Nickname-Detector/"
   },
-  "license": "GNU Lesser General Public License version 3 (LGPLv3)",
+  "license": "Apache-2.0",
   "icon": "assets/nickname_detector/icon.png",
   "environment": "client",
   "entrypoints": {
