@@ -2,41 +2,55 @@ import net.darkhax.curseforgegradle.TaskPublishCurseForge
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
-    id("fabric-loom")
-    kotlin("jvm")
-    kotlin("plugin.serialization")
-    id("com.gradleup.shadow")
-    id("com.modrinth.minotaur")
-    id("net.darkhax.curseforgegradle")
-    id("co.uzzu.dotenv.gradle")
+    alias(libs.plugins.loom)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.minotaur)
+    alias(libs.plugins.curseForgeGradle)
+    alias(libs.plugins.dotenv)
 }
 val archivesBaseName = providers.gradleProperty("archives_base_name")
 val modVersion = providers.gradleProperty("mod_version")
 val mavenGroup = providers.gradleProperty("maven_group")
-val minecraftVersion = providers.gradleProperty("minecraft_version")
-val yarnMappings = providers.gradleProperty("yarn_mappings")
-val loaderVersion = providers.gradleProperty("loader_version")
-val fabricVersion = providers.gradleProperty("fabric_version")
-val fabricLanguageKotlinVersion = providers.gradleProperty("fabric_language_kotlin_version")
-val okhttpVersion = providers.gradleProperty("okhttp_version")
-val javaVersion = providers.gradleProperty("java_version")
-base.archivesName = archivesBaseName.get()
+
+val javaVersion = libs.versions.java.map { it.toInt() }
+
+base.archivesName = archivesBaseName
 version = modVersion.get()
 group = mavenGroup.get()
+val shade by configurations.creating {
+    isCanBeResolved = true
+    isCanBeConsumed = false
+}
 dependencies {
-    minecraft("com.mojang:minecraft:${minecraftVersion.get()}")
-    mappings("net.fabricmc:yarn:${yarnMappings.get()}:v2")
-    modImplementation("net.fabricmc:fabric-loader:${loaderVersion.get()}")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${fabricVersion.get()}")
-    modImplementation("net.fabricmc:fabric-language-kotlin:${fabricLanguageKotlinVersion.get()}")
-    shadow(implementation("com.squareup.okhttp3:okhttp:${okhttpVersion.get()}")!!)
+    minecraft(libs.minecraft)
+    mappings(variantOf(libs.yarnMappings) { classifier("v2") })
+    modImplementation(libs.loader)
+    modImplementation(libs.fabric.api)
+    modImplementation(libs.fabric.language.kotlin)
+    implementation(libs.okhttp)
+    shade(libs.okhttp)
+}
+java {
+    toolchain {
+        languageVersion = javaVersion.map { JavaLanguageVersion.of(it) }
+        vendor = JvmVendorSpec.ADOPTIUM
+    }
+    sourceCompatibility = JavaVersion.toVersion(javaVersion.get())
+    targetCompatibility = JavaVersion.toVersion(javaVersion.get())
+    withSourcesJar()
 }
 tasks {
     withType<JavaCompile>().configureEach {
         options.encoding = "UTF-8"
-        sourceCompatibility = javaVersion.get()
-        targetCompatibility = javaVersion.get()
-        options.release = javaVersion.get().toInt()
+        sourceCompatibility = javaVersion.get().toString()
+        targetCompatibility = javaVersion.get().toString()
+        if (javaVersion.get() > 8) options.release = javaVersion
+    }
+    named<UpdateDaemonJvm>("updateDaemonJvm") {
+        languageVersion = libs.versions.gradleJava.map { JavaLanguageVersion.of(it.toInt()) }
+        vendor = JvmVendorSpec.ADOPTIUM
     }
     withType<JavaExec>().configureEach { defaultCharacterEncoding = "UTF-8" }
     withType<Javadoc>().configureEach { options.encoding = "UTF-8" }
@@ -44,7 +58,7 @@ tasks {
     withType<KotlinCompile>().configureEach {
         compilerOptions {
             extraWarnings = true
-            jvmTarget = JvmTarget.valueOf("JVM_${javaVersion.get()}")
+            jvmTarget = javaVersion.map { JvmTarget.valueOf("JVM_${if (it == 8) "1_8" else it}") }
         }
     }
     named<Jar>("jar") {
@@ -52,11 +66,11 @@ tasks {
         val parentLicense = layout.projectDirectory.file("../LICENSE")
         val licenseFile = when {
             rootLicense.asFile.exists() -> {
-                logger.lifecycle("Using LICENSE from project root: ${rootLicense.asFile}")
+                logger.lifecycle("Using LICENSE from project root: {}", rootLicense.asFile)
                 rootLicense
             }
             parentLicense.asFile.exists() -> {
-                logger.lifecycle("Using LICENSE from parent directory: ${parentLicense.asFile}")
+                logger.lifecycle("Using LICENSE from parent directory: {}", parentLicense.asFile)
                 parentLicense
             }
             else -> {
@@ -71,13 +85,26 @@ tasks {
         }
         archiveClassifier = "dev"
     }
+    shadowJar {
+        archiveClassifier = "dev"
+        configurations = listOf(shade)
+        val projectPackage = "${mavenGroup.get().lowercase()}.${archiveBaseName.get().lowercase().replace('-', '_')}.shaded"
+        relocate("okhttp3", "$projectPackage.okhttp3")
+        relocate("okio", "$projectPackage.okio")
+        exclude("kotlin/**", "org/intellij/lang/annotations/**", "org/jetbrains/annotations/**")
+        minimize()
+    }
+    remapJar {
+        dependsOn(shadowJar)
+        inputFile = shadowJar.get().archiveFile
+    }
     processResources {
         val stringModVersion = modVersion.get()
-        val stringLoaderVersion = loaderVersion.get()
-        val stringFabricVersion = fabricVersion.get()
-        val stringFabricLanguageKotlinVersion = fabricLanguageKotlinVersion.get()
-        val stringMinecraftVersion = minecraftVersion.get()
-        val stringJavaVersion = javaVersion.get()
+        val stringLoaderVersion = libs.versions.loader.get()
+        val stringFabricVersion = libs.versions.fabric.api.get()
+        val stringFabricLanguageKotlinVersion = libs.versions.fabric.language.kotlin.get()
+        val stringMinecraftVersion = libs.versions.minecraft.get()
+        val stringJavaVersion = libs.versions.java.get()
         inputs.property("modVersion", stringModVersion)
         inputs.property("loaderVersion", stringLoaderVersion)
         inputs.property("fabricVersion", stringFabricVersion)
@@ -97,38 +124,24 @@ tasks {
             )
         }
     }
-    java {
-        toolchain.languageVersion = JavaLanguageVersion.of(javaVersion.get())
-        sourceCompatibility = JavaVersion.toVersion(javaVersion.get().toInt())
-        targetCompatibility = JavaVersion.toVersion(javaVersion.get().toInt())
-        withSourcesJar()
-    }
-    shadowJar {
-        archiveClassifier = "dev"
-        configurations = listOf(project.configurations.shadow.get())
-        relocate("okhttp3", "${project.group.toString().lowercase()}.${base.archivesName.get().lowercase().replace('-', '_')}.shaded.okhttp3")
-    }
-    remapJar {
-        dependsOn(shadowJar)
-        inputFile = shadowJar.get().archiveFile
-    }
     register<TaskPublishCurseForge>("publishCurseForge") {
+        group = "publishing"
         disableVersionDetection()
         apiToken = env.fetch("CURSEFORGE_TOKEN", "")
         val file = upload(880169, remapJar)
-        file.displayName = "[${minecraftVersion.get()}] Nickname Detector"
+        file.displayName = "[${libs.versions.minecraft.get()}] Nickname Detector"
         file.addEnvironment("Client")
         file.changelog = ""
         file.releaseType = "release"
         file.addModLoader("Fabric")
-        file.addGameVersion(minecraftVersion.get())
+        file.addGameVersion(libs.versions.minecraft.get())
     }
 }
 modrinth {
-    token.set(env.fetch("MODRINTH_TOKEN", ""))
-    projectId.set("nickname-detector")
+    token = env.fetch("MODRINTH_TOKEN", "")
+    projectId = "nickname-detector"
     uploadFile.set(tasks.remapJar)
-    gameVersions.addAll(minecraftVersion.get())
-    versionName.set("[${minecraftVersion.get()}] Nickname Detector")
+    gameVersions.add(libs.versions.minecraft)
+    versionName = libs.versions.minecraft.map { "[$it] Nickname Detector" }
     dependencies { required.project("fabric-api", "fabric-language-kotlin") }
 }
