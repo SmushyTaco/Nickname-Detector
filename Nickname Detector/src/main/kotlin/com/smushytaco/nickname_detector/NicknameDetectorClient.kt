@@ -1,4 +1,5 @@
 package com.smushytaco.nickname_detector
+import com.mojang.blaze3d.platform.InputConstants
 import com.mojang.brigadier.Command
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
@@ -12,26 +13,26 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.network.ClientPlayerEntity
-import net.minecraft.client.option.KeyBinding
-import net.minecraft.client.util.InputUtil
-import net.minecraft.command.CommandSource
-import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.entity.projectile.ProjectileUtil
-import net.minecraft.text.Text
-import net.minecraft.util.Identifier
-import net.minecraft.util.hit.EntityHitResult
-import net.minecraft.util.hit.HitResult
+import net.minecraft.client.KeyMapping
+import net.minecraft.client.Minecraft
+import net.minecraft.client.player.LocalPlayer
+import net.minecraft.commands.SharedSuggestionProvider
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.entity.projectile.ProjectileUtil
+import net.minecraft.world.phys.EntityHitResult
+import net.minecraft.world.phys.HitResult
 import org.lwjgl.glfw.GLFW
-import java.util.UUID
+import java.util.*
 import kotlin.concurrent.thread
 @Environment(EnvType.CLIENT)
 object NicknameDetectorClient : ClientModInitializer {
     private const val MOD_ID = "nickname_detector"
-    private val KEYBINDING = KeyBinding("key.$MOD_ID.$MOD_ID", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, KeyBinding.Category.create(Identifier.of(MOD_ID, "category")))
-    private fun nicknameDetector(username: String, clientPlayerEntity: ClientPlayerEntity) {
-        val minecraftClient = MinecraftClient.getInstance()
+    private val KEYBINDING = KeyMapping("key.$MOD_ID.$MOD_ID", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, KeyMapping.Category.register(
+        ResourceLocation.fromNamespaceAndPath(MOD_ID, "category")))
+    private fun nicknameDetector(username: String, clientPlayerEntity: LocalPlayer) {
+        val minecraftClient = Minecraft.getInstance()
         thread {
             var uuid: UUID? = null
             try {
@@ -40,12 +41,12 @@ object NicknameDetectorClient : ClientModInitializer {
             val accountInformation = uuid?.let { id -> MojangApiParser.getUsername(id) } ?: MojangApiParser.getUuid(username)
             if (accountInformation == null) {
                 minecraftClient.execute {
-                    clientPlayerEntity.sendMessage(Text.literal("§c${uuid ?: username} §4does not exist!"), false)
+                    clientPlayerEntity.displayClientMessage(Component.literal("§c${uuid ?: username} §4does not exist!"), false)
                 }
                 return@thread
             }
             minecraftClient.execute {
-                clientPlayerEntity.sendMessage(Text.literal("§b${if (uuid != null) accountInformation.id.toString() else accountInformation.name} §3does exist!"), false)
+                clientPlayerEntity.displayClientMessage(Component.literal("§b${if (uuid != null) accountInformation.id.toString() else accountInformation.name} §3does exist!"), false)
             }
         }
     }
@@ -53,8 +54,8 @@ object NicknameDetectorClient : ClientModInitializer {
         KeyBindingHelper.registerKeyBinding(KEYBINDING)
         ClientCommandRegistrationCallback.EVENT.register(ClientCommandRegistrationCallback { dispatcher, _ ->
             dispatcher.register(literal("nicknamedetector").executes {
-                val minecraftClient = MinecraftClient.getInstance()
-                val playerNames = it.source.playerNames
+                val minecraftClient = Minecraft.getInstance()
+                val playerNames = it.source.onlinePlayerNames
                 thread {
                     val nicknamedPlayers = arrayListOf<String>()
                     val normalPlayers = arrayListOf<String>()
@@ -68,25 +69,25 @@ object NicknameDetectorClient : ClientModInitializer {
                     }
                     minecraftClient.execute {
                         when (normalPlayers.size) {
-                            0 -> it.source.player.sendMessage(Text.literal("§4No normal players were detected!"), false)
-                            1 -> it.source.player.sendMessage(Text.literal("§b${normalPlayers[0]} §3does exist!"), false)
-                            2 -> it.source.player.sendMessage(Text.literal("§b${normalPlayers[0]} §3and §b${normalPlayers[1]} §3do exist!"), false)
+                            0 -> it.source.player.displayClientMessage(Component.literal("§4No normal players were detected!"), false)
+                            1 -> it.source.player.displayClientMessage(Component.literal("§b${normalPlayers[0]} §3does exist!"), false)
+                            2 -> it.source.player.displayClientMessage(Component.literal("§b${normalPlayers[0]} §3and §b${normalPlayers[1]} §3do exist!"), false)
                             else -> {
                                 val lastElement = normalPlayers.removeLast()
                                 val stringBuilder = StringBuilder()
                                 for (normalPlayer in normalPlayers) stringBuilder.append("§b$normalPlayer§3, ")
-                                it.source.player.sendMessage(Text.literal("${stringBuilder}and §b$lastElement §3do exist!"), false)
+                                it.source.player.displayClientMessage(Component.literal("${stringBuilder}and §b$lastElement §3do exist!"), false)
                             }
                         }
                         when (nicknamedPlayers.size) {
-                            0 -> it.source.player.sendMessage(Text.literal("§3No nicknamed players were detected!"), false)
-                            1 -> it.source.player.sendMessage(Text.literal("§c${nicknamedPlayers[0]} §4does not exist!"), false)
-                            2 -> it.source.player.sendMessage(Text.literal("§c${nicknamedPlayers[0]} §4and §c${nicknamedPlayers[1]} §4do not exist!"), false)
+                            0 -> it.source.player.displayClientMessage(Component.literal("§3No nicknamed players were detected!"), false)
+                            1 -> it.source.player.displayClientMessage(Component.literal("§c${nicknamedPlayers[0]} §4does not exist!"), false)
+                            2 -> it.source.player.displayClientMessage(Component.literal("§c${nicknamedPlayers[0]} §4and §c${nicknamedPlayers[1]} §4do not exist!"), false)
                             else -> {
                                 val lastElement = nicknamedPlayers.removeLast()
                                 val stringBuilder = StringBuilder()
                                 for (nicknamedPlayer in nicknamedPlayers) stringBuilder.append("§c$nicknamedPlayer§4, ")
-                                it.source.player.sendMessage(Text.literal("${stringBuilder}and §c$lastElement §4do not exist!"), false)
+                                it.source.player.displayClientMessage(Component.literal("${stringBuilder}and §c$lastElement §4do not exist!"), false)
                             }
                         }
                     }
@@ -96,32 +97,32 @@ object NicknameDetectorClient : ClientModInitializer {
                 .then(ClientCommandManager.argument("username", StringArgumentType.word())
                     .suggests { context, builder ->
                         @Suppress("UNCHECKED_CAST")
-                        UsernameSuggestionProvider.getSuggestions(context as CommandContext<CommandSource>, builder)
+                        UsernameSuggestionProvider.getSuggestions(context as CommandContext<SharedSuggestionProvider>, builder)
                     }.executes {
                         nicknameDetector(StringArgumentType.getString(it, "username"), it.source.player)
                         return@executes Command.SINGLE_SUCCESS
                     }))
         })
         ClientTickEvents.START_CLIENT_TICK.register(ClientTickEvents.StartTick {
-            while (KEYBINDING.wasPressed()) {
+            while (KEYBINDING.consumeClick()) {
                 val player = it.player ?: return@StartTick
                 val target = target(it) ?: return@StartTick
-                if (target.type != HitResult.Type.ENTITY || target !is EntityHitResult || target.entity !is PlayerEntity) return@StartTick
-                val playerToFriend = target.entity as PlayerEntity
+                if (target.type != HitResult.Type.ENTITY || target !is EntityHitResult || target.entity !is Player) return@StartTick
+                val playerToFriend = target.entity as Player
                 nicknameDetector(playerToFriend.name.string, player)
             }
         })
     }
-    private fun target(client: MinecraftClient, range: Double = 250.0, tickDelta: Float = 1.0F): HitResult? {
+    private fun target(client: Minecraft, range: Double = 250.0, tickDelta: Float = 1.0F): HitResult? {
         val clientCameraEntity = client.cameraEntity ?: return null
-        var hitResult = clientCameraEntity.raycast(range, tickDelta, false)
-        val rotationVector = clientCameraEntity.getRotationVec(1.0F)
-        val positionVector = clientCameraEntity.getCameraPosVec(tickDelta)
-        val box = clientCameraEntity.boundingBox.stretch(rotationVector.multiply(range)).expand(1.0, 1.0, 1.0)
-        val entityHitResult = ProjectileUtil.raycast(clientCameraEntity, positionVector, positionVector.add(rotationVector.x * range, rotationVector.y * range, rotationVector.z * range), box, { !it.isSpectator && it.canHit() }, range * range)
+        var hitResult = clientCameraEntity.pick(range, tickDelta, false)
+        val rotationVector = clientCameraEntity.getViewVector(1.0F)
+        val positionVector = clientCameraEntity.getEyePosition(tickDelta)
+        val box = clientCameraEntity.boundingBox.expandTowards(rotationVector.scale(range)).inflate(1.0, 1.0, 1.0)
+        val entityHitResult = ProjectileUtil.getEntityHitResult(clientCameraEntity, positionVector, positionVector.add(rotationVector.x * range, rotationVector.y * range, rotationVector.z * range), box, { !it.isSpectator && it.isPickable }, range * range)
         if (entityHitResult != null) {
-            val distanceFromEntity = positionVector.squaredDistanceTo(entityHitResult.pos)
-            if (distanceFromEntity < range * range && (hitResult.type == HitResult.Type.MISS || hitResult.type == HitResult.Type.BLOCK && distanceFromEntity < positionVector.squaredDistanceTo(hitResult.pos))) hitResult = entityHitResult
+            val distanceFromEntity = positionVector.distanceToSqr(entityHitResult.location)
+            if (distanceFromEntity < range * range && (hitResult.type == HitResult.Type.MISS || hitResult.type == HitResult.Type.BLOCK && distanceFromEntity < positionVector.distanceToSqr(hitResult.location))) hitResult = entityHitResult
         }
         return hitResult
     }
