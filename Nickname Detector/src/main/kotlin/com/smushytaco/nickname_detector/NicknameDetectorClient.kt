@@ -18,7 +18,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.entity.projectile.ProjectileUtil
 import net.minecraft.world.phys.EntityHitResult
@@ -30,7 +30,7 @@ import kotlin.concurrent.thread
 object NicknameDetectorClient : ClientModInitializer {
     private const val MOD_ID = "nickname_detector"
     private val KEYBINDING = KeyMapping("key.$MOD_ID.$MOD_ID", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, KeyMapping.Category.register(
-        ResourceLocation.fromNamespaceAndPath(MOD_ID, "category")))
+        Identifier.fromNamespaceAndPath(MOD_ID, "category")))
     private fun nicknameDetector(username: String, clientPlayerEntity: LocalPlayer) {
         val minecraftClient = Minecraft.getInstance()
         thread {
