@@ -25,10 +25,9 @@ val shade: Configuration by configurations.creating {
 }
 dependencies {
     minecraft(libs.minecraft)
-    mappings(loom.officialMojangMappings())
-    modImplementation(libs.loader)
-    modImplementation(libs.fabric.api)
-    modImplementation(libs.fabric.language.kotlin)
+    implementation(libs.loader)
+    implementation(libs.fabric.api)
+    implementation(libs.fabric.language.kotlin)
     implementation(libs.okhttp)
     shade(libs.okhttp)
 }
@@ -73,6 +72,7 @@ tasks {
     withType<JavaExec>().configureEach { defaultCharacterEncoding = "UTF-8" }
     withType<Javadoc>().configureEach { options.encoding = "UTF-8" }
     withType<Test>().configureEach { defaultCharacterEncoding = "UTF-8" }
+    named("build") { dependsOn(shadowJar) }
     withType<KotlinCompile>().configureEach {
         compilerOptions {
             extraWarnings = true
@@ -87,17 +87,13 @@ tasks {
         }
     }
     shadowJar {
-        archiveClassifier = "dev"
+        archiveClassifier = ""
         configurations = listOf(shade)
         val projectPackage = "${mavenGroup.get().lowercase()}.${archiveBaseName.get().lowercase().replace('-', '_')}.shaded"
         relocate("okhttp3", "$projectPackage.okhttp3")
         relocate("okio", "$projectPackage.okio")
         exclude("kotlin/**", "org/intellij/lang/annotations/**", "org/jetbrains/annotations/**")
         minimize()
-    }
-    remapJar {
-        dependsOn(shadowJar)
-        inputFile = shadowJar.get().archiveFile
     }
     processResources {
         val resourceMap = mapOf(
@@ -115,7 +111,7 @@ tasks {
         group = "publishing"
         disableVersionDetection()
         apiToken = env.fetch("CURSEFORGE_TOKEN", "")
-        val file = upload(880169, remapJar)
+        val file = upload(880169, jar)
         file.displayName = "[${libs.versions.minecraft.get()}] Nickname Detector"
         file.addEnvironment("Client")
         file.changelog = ""
@@ -127,7 +123,7 @@ tasks {
 modrinth {
     token = env.fetch("MODRINTH_TOKEN", "")
     projectId = "nickname-detector"
-    uploadFile.set(tasks.remapJar)
+    uploadFile.set(tasks.jar)
     gameVersions.add(libs.versions.minecraft)
     versionName = libs.versions.minecraft.map { "[$it] Nickname Detector" }
     dependencies { required.project("fabric-api", "fabric-language-kotlin") }

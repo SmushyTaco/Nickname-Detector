@@ -8,11 +8,11 @@ import com.smushytaco.nickname_detector.mojang_api_parser.UUIDSerializer
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
 import net.minecraft.client.player.LocalPlayer
@@ -41,17 +41,17 @@ object NicknameDetectorClient : ClientModInitializer {
             val accountInformation = uuid?.let { id -> MojangApiParser.getUsername(id) } ?: MojangApiParser.getUuid(username)
             if (accountInformation == null) {
                 minecraftClient.execute {
-                    clientPlayerEntity.displayClientMessage(Component.literal("§c${uuid ?: username} §4does not exist!"), false)
+                    clientPlayerEntity.sendSystemMessage(Component.literal("§c${uuid ?: username} §4does not exist!"))
                 }
                 return@thread
             }
             minecraftClient.execute {
-                clientPlayerEntity.displayClientMessage(Component.literal("§b${if (uuid != null) accountInformation.id.toString() else accountInformation.name} §3does exist!"), false)
+                clientPlayerEntity.sendSystemMessage(Component.literal("§b${if (uuid != null) accountInformation.id.toString() else accountInformation.name} §3does exist!"))
             }
         }
     }
     override fun onInitializeClient() {
-        KeyBindingHelper.registerKeyBinding(KEYBINDING)
+        KeyMappingHelper.registerKeyMapping(KEYBINDING)
         ClientCommandRegistrationCallback.EVENT.register(ClientCommandRegistrationCallback { dispatcher, _ ->
             dispatcher.register(literal("nicknamedetector").executes {
                 val minecraftClient = Minecraft.getInstance()
@@ -69,32 +69,32 @@ object NicknameDetectorClient : ClientModInitializer {
                     }
                     minecraftClient.execute {
                         when (normalPlayers.size) {
-                            0 -> it.source.player.displayClientMessage(Component.literal("§4No normal players were detected!"), false)
-                            1 -> it.source.player.displayClientMessage(Component.literal("§b${normalPlayers[0]} §3does exist!"), false)
-                            2 -> it.source.player.displayClientMessage(Component.literal("§b${normalPlayers[0]} §3and §b${normalPlayers[1]} §3do exist!"), false)
+                            0 -> it.source.player.sendSystemMessage(Component.literal("§4No normal players were detected!"))
+                            1 -> it.source.player.sendSystemMessage(Component.literal("§b${normalPlayers[0]} §3does exist!"))
+                            2 -> it.source.player.sendSystemMessage(Component.literal("§b${normalPlayers[0]} §3and §b${normalPlayers[1]} §3do exist!"))
                             else -> {
                                 val lastElement = normalPlayers.removeLast()
                                 val stringBuilder = StringBuilder()
                                 for (normalPlayer in normalPlayers) stringBuilder.append("§b$normalPlayer§3, ")
-                                it.source.player.displayClientMessage(Component.literal("${stringBuilder}and §b$lastElement §3do exist!"), false)
+                                it.source.player.sendSystemMessage(Component.literal("${stringBuilder}and §b$lastElement §3do exist!"))
                             }
                         }
                         when (nicknamedPlayers.size) {
-                            0 -> it.source.player.displayClientMessage(Component.literal("§3No nicknamed players were detected!"), false)
-                            1 -> it.source.player.displayClientMessage(Component.literal("§c${nicknamedPlayers[0]} §4does not exist!"), false)
-                            2 -> it.source.player.displayClientMessage(Component.literal("§c${nicknamedPlayers[0]} §4and §c${nicknamedPlayers[1]} §4do not exist!"), false)
+                            0 -> it.source.player.sendSystemMessage(Component.literal("§3No nicknamed players were detected!"))
+                            1 -> it.source.player.sendSystemMessage(Component.literal("§c${nicknamedPlayers[0]} §4does not exist!"))
+                            2 -> it.source.player.sendSystemMessage(Component.literal("§c${nicknamedPlayers[0]} §4and §c${nicknamedPlayers[1]} §4do not exist!"))
                             else -> {
                                 val lastElement = nicknamedPlayers.removeLast()
                                 val stringBuilder = StringBuilder()
                                 for (nicknamedPlayer in nicknamedPlayers) stringBuilder.append("§c$nicknamedPlayer§4, ")
-                                it.source.player.displayClientMessage(Component.literal("${stringBuilder}and §c$lastElement §4do not exist!"), false)
+                                it.source.player.sendSystemMessage(Component.literal("${stringBuilder}and §c$lastElement §4do not exist!"))
                             }
                         }
                     }
                 }
                 return@executes Command.SINGLE_SUCCESS
             }
-                .then(ClientCommandManager.argument("username", StringArgumentType.word())
+                .then(ClientCommands.argument("username", StringArgumentType.word())
                     .suggests { context, builder ->
                         @Suppress("UNCHECKED_CAST")
                         UsernameSuggestionProvider.getSuggestions(context as CommandContext<SharedSuggestionProvider>, builder)
